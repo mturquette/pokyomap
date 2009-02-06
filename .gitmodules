@@ -1,0 +1,3 @@
+[submodule "meta-texasinstruments"]
+	path = meta-texasinstruments
+	url = git://github.com/mturquette/meta-texasinstruments.git
