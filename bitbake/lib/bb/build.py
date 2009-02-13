@@ -28,6 +28,22 @@
 from bb import data, fetch, event, mkdirhier, utils
 import bb, os
 
+################################################################################
+# moveme... testing stubs for distributed build:
+import random
+remote_hosts = [ "sealion.sc.ti.com", "polarbear.sc.ti.com" ]
+remote_host_cnt = len(remote_hosts)
+
+sysrand = random.SystemRandom()
+
+def next_remote_cmd():
+    idx = sysrand.randint( 0, remote_host_cnt-1 )
+    remote_host = remote_hosts[ idx ]
+    bb.msg.note(1, bb.msg.domain.Build, "#### picking remote host: %s (%d) ####" % (remote_host, idx) )
+    return "ssh %s dchroot -d -c buildroot " % remote_host
+################################################################################
+
+
 # events
 class FuncFailed(Exception):
     """Executed function failed"""
@@ -156,6 +172,8 @@ def exec_func_shell(func, d, flags):
         if globals()[check](func, deps):
             return
 
+    remote_cmd = next_remote_cmd()
+    
     global logfile
     t = data.getVar('T', d, 1)
     if not t:
@@ -208,7 +226,7 @@ def exec_func_shell(func, d, flags):
     else:
         maybe_fakeroot = ''
     lang_environment = "LC_ALL=C "
-    ret = os.system('%s%ssh -e %s' % (lang_environment, maybe_fakeroot, runfile))
+    ret = os.system('%s%s%s %s' % (remote_cmd, lang_environment, maybe_fakeroot, runfile))
     try:
         os.chdir(prevdir)
     except:

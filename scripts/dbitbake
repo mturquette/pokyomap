@@ -1,0 +1,25 @@
+#!/bin/sh
+# 
+# Wrapper script to invoke bitbake in a dchroot environment, with some extra
+# steps to ensure distributed build works ok
+# 
+
+source `dirname $0`/../build/conf/dbitbake.conf
+
+
+export BUILD_SERVERS
+export DCHROOT_NAME
+
+
+function die() {
+    echo "error: $*"
+    exit 1
+}
+
+# make sure our ssh keys are in good shape..
+for server in $BUILD_SERVERS; do
+    ssh $server true || die "can't contact $server"
+done
+
+
+dchroot -d -c $DCHROOT_NAME "bitbake $*"

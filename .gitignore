@@ -10,3 +10,4 @@ meta-prvt*
 *.swp
 *.orig
 *.rej
+*~
