@@ -7,5 +7,5 @@ PV = "1.9.99.5+gitr${SRCREV}"
 
 XORG_PN = "libXi"
 
-SRC_URI = "git://anongit.freedesktop.org/git/xorg/lib/${XORG_PN};protocol=git"
+SRC_URI = "git://anongit.freedesktop.org/git/xorg/lib/${XORG_PN}.git;protocol=http"
 S = "${WORKDIR}/git"
