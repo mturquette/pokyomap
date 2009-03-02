@@ -34,7 +34,7 @@ python do_package_deb_install () {
         raise bb.build.FuncFailed("missing variables (one or more of PKG, PKGFN, IMAGE_ROOTFS)")
     try:
         if not os.exists(rootfs):
-            os.makedirs(rootfs)
+            bb.mkdirhier(rootfs)
         os.chdir(rootfs)
     except OSError:
         raise bb.build.FuncFailed(str(sys.exc_value))

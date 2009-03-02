@@ -246,9 +246,6 @@ def _get_var_flags_triple(d):
     """
     return []
 
-__expand_var_regexp__ = re.compile(r"\${[^{}]+}")
-__expand_python_regexp__ = re.compile(r"\${@.+?}")
-
 def expand(s, d, varname = None):
     """Variable expansion using the data store.
 
@@ -320,7 +317,7 @@ def expandData(alterdata, readdata = None):
         if type(val) is not types.StringType:
             continue
         expanded = expand(val, readdata)
-#       print "key is %s, val is %s, expanded is %s" % (key, val, expanded)
+        print "key is %s, val is %s, expanded is %s" % (key, val, expanded)
         if val != expanded:
             setVar(key, expanded, alterdata)
 

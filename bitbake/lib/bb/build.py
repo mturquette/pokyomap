@@ -28,20 +28,11 @@
 from bb import data, fetch, event, mkdirhier, utils
 import bb, os
 
-################################################################################
-# moveme... testing stubs for distributed build:
-import random
-remote_hosts = [ "sealion.sc.ti.com", "polarbear.sc.ti.com" ]
-remote_host_cnt = len(remote_hosts)
-
-sysrand = random.SystemRandom()
-
-def next_remote_cmd():
-    idx = sysrand.randint( 0, remote_host_cnt-1 )
-    remote_host = remote_hosts[ idx ]
-    bb.msg.note(1, bb.msg.domain.Build, "#### picking remote host: %s (%d) ####" % (remote_host, idx) )
-    return "ssh %s dchroot -d -c buildroot " % remote_host
-################################################################################
+##################
+# for debug:
+import datetime
+import time
+##################
 
 
 # events
@@ -172,7 +163,7 @@ def exec_func_shell(func, d, flags):
         if globals()[check](func, deps):
             return
 
-    remote_cmd = next_remote_cmd()
+    remote_cmd = data.getVar('REMOTE_BUILD_CMD', d, 1)
     
     global logfile
     t = data.getVar('T', d, 1)
@@ -182,7 +173,8 @@ def exec_func_shell(func, d, flags):
     logfile = "%s/log.%s.%s" % (t, func, str(os.getpid()))
     runfile = "%s/run.%s.%s" % (t, func, str(os.getpid()))
 
-    f = open(runfile, "w")
+    f = open(runfile, "w", 32768)
+    t1 = time.time()
     f.write("#!/bin/sh -e\n")
     if bb.msg.debug_level['default'] > 0: f.write("set -x\n")
     data.emit_env(f, d)
@@ -191,6 +183,7 @@ def exec_func_shell(func, d, flags):
     if func: f.write("%s\n" % func)
     f.close()
     os.chmod(runfile, 0775)
+    bb.msg.note(1, bb.msg.domain.Build, "%s: #### wrote %s in %f ####" % (datetime.datetime.now(), runfile, (time.time() - t1)) )
     if not func:
         bb.msg.error(bb.msg.domain.Build, "Function not specified")
         raise FuncFailed()
@@ -208,6 +201,8 @@ def exec_func_shell(func, d, flags):
 
     se = so
 
+    #bb.msg.note(1, bb.msg.domain.Build, "%s: #### going to run %s (%s) ####" % (datetime.datetime.now(), runfile, remote_cmd) )
+    t1 = time.time()
     if not interact:
         # dup the existing fds so we dont lose them
         osi = [os.dup(sys.stdin.fileno()), sys.stdin.fileno()]
@@ -248,6 +243,8 @@ def exec_func_shell(func, d, flags):
         os.close(oso[0])
         os.close(ose[0])
 
+    bb.msg.note(1, bb.msg.domain.Build, "%s: #### ran %s in %f ####" % (datetime.datetime.now(), runfile, (time.time() - t1)) )
+    #bb.msg.note(1, bb.msg.domain.Build, "%s: #### done running %s (%s) ####" % (datetime.datetime.now(), runfile, remote_cmd) )
     if ret==0:
         if bb.msg.debug_level['default'] > 0:
             os.remove(runfile)
@@ -292,8 +289,22 @@ def exec_task(task, d):
         data.setVar('OVERRIDES', 'task-%s:%s' % (task[3:], old_overrides), localdata)
         data.update_data(localdata)
         data.expandKeys(localdata)
+
+        # setup symlinks from virtual work dir to build-machine-local work dir if needed:
+        localworkdir = data.getVar('LOCALWORKDIR', localdata, 1)
+        vworkdir = data.getVar('VWORKDIR', localdata, 1)
+        bb.msg.note(1, bb.msg.domain.RunQueue, "LOCALWORKDIR=%s, WORKDIR=%s" % (localworkdir, vworkdir))
+        if os.access(vworkdir, os.F_OK) == False:
+            bb.msg.note(1, bb.msg.domain.RunQueue, "going to create symlink %s <- %s" % (localworkdir, vworkdir))
+            bb.mkdirhier(localworkdir)
+            bb.mkdirhier(os.path.dirname(vworkdir))
+            os.symlink(localworkdir, vworkdir)
+            bb.msg.note(1, bb.msg.domain.RunQueue, "created symlink %s <- %s" % (localworkdir, vworkdir))
+
         event.fire(TaskStarted(task, localdata))
+        bb.msg.note(1, bb.msg.domain.Build, "%s: #### task started: %s ####" % (datetime.datetime.now(), task) )
         exec_func(task, localdata)
+        bb.msg.note(1, bb.msg.domain.Build, "%s: #### task finished: %s ####" % (datetime.datetime.now(), task) )
         event.fire(TaskSucceeded(task, localdata))
     except FuncFailed, reason:
         bb.msg.note(1, bb.msg.domain.Build, "Task failed: %s" % reason )

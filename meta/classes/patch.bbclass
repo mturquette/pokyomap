@@ -185,7 +185,7 @@ def patch_init(d):
 			self.initialized = False
 			p = os.path.join(self.dir, 'patches')
 			if not os.path.exists(p):
-				os.makedirs(p)
+				bb.mkdirhier(p)
 
 		def Clean(self):
 			try:

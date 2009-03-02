@@ -19,6 +19,14 @@ BitBake Utility Functions
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+
+##################
+# for debug:
+import datetime
+import time
+##################
+
+
 digits = "0123456789"
 ascii_letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -241,6 +249,7 @@ def lockfile(name):
         bb.msg.error(bb.msg.domain.Util, "Error, lockfile path does not exist!: %s" % path)
         sys.exit(1)
 
+    t1 = time.time()
     while True:
         # If we leave the lockfiles lying around there is no problem
         # but we should clean up after ourselves. This gives potential
@@ -259,6 +268,8 @@ def lockfile(name):
             if os.path.exists(lf.name):
                statinfo2 = os.stat(lf.name)
                if statinfo.st_ino == statinfo2.st_ino:
+                   import bb
+                   bb.msg.note(1, bb.msg.domain.RunQueue, "%s: #### waited %f for lockfile %s ####" % (datetime.datetime.now(), (time.time() - t1), name) )
                    return lf
             # File no longer exists or changed, retry
             lf.close

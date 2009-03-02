@@ -7,8 +7,8 @@
 source `dirname $0`/../build/conf/dbitbake.conf
 
 
-export BUILD_SERVERS
-export DCHROOT_NAME
+export DBB_BUILD_SERVERS=$BUILD_SERVERS
+export DBB_DCHROOT_NAME=$DCHROOT_NAME
 
 
 function die() {
@@ -16,10 +16,60 @@ function die() {
     exit 1
 }
 
-# make sure our ssh keys are in good shape..
+
+logfile=""
+# some simple arg parsing, for extra bells and whistles..
+if [ "x$1" = "x--log" ]; then
+    logfile="bitbake-`date +%Y%m%d%H%M%S`.out"
+    shift 1;
+fi
+
+
+######################################################
+# make initial ssh connection to each of the build
+# clients.  The initial connection serves two purposes
+#  1) authenticate at the point where if necessary the
+#     user can enter their password (which can't
+#     happen once bitbake is launched)
+#  2) be the 'ControlMaster' over which other ssh
+#     connections are made.  This speeds up the
+#     ssh connections at buildtime.
+
+mkdir -p /tmp/dbitbake-$USER
+chmod 700 /tmp/dbitbake-$USER
+
+#export DBB_CONTROL_FILE_PATH="/tmp/dbitbake-$USER/$RANDOM-%r@%h:%p"
+# for now, until I can figure out how to get these environment vars
+# accessible from build.py, lets keep this not random..
+export DBB_CONTROL_FILE_PATH="/tmp/dbitbake-$USER/%r@%h:%p"
+
 for server in $BUILD_SERVERS; do
-    ssh $server true || die "can't contact $server"
+    ssh -M -N -f -S $DBB_CONTROL_FILE_PATH $server ||
+       die "can't contact $server"
 done
 
+function kill_control_masters() {
+    for server in $BUILD_SERVERS; do
+        ssh -S $DBB_CONTROL_FILE_PATH -O exit $server
+    done
+}
 
-dchroot -d -c $DCHROOT_NAME "bitbake $*"
+######################################################
+# launch bitbake in dchroot environment
+trap "kill_control_masters; exit" INT TERM EXIT
+if [ "x" != "x$logfile" ]; then
+    echo "build start: `date`" > $logfile
+    dchroot -d -c $DCHROOT_NAME "bitbake $*" | tee -a $logfile 2>&1
+    echo "build end: `date`" >> $logfile
+else
+    dchroot -d -c $DCHROOT_NAME "bitbake $*"
+fi
+RET=$?
+
+######################################################
+# cleanup
+kill_control_masters
+trap - INT TERM EXIT
+
+exit $RET
+

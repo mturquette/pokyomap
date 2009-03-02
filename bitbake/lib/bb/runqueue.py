@@ -28,6 +28,26 @@ import bb, os, sys
 import signal
 import stat
 
+##################
+# for debug:
+import datetime
+import time
+##################
+
+################################################################################
+# moveme... testing stubs for distributed build:
+remote_hosts = [ "sealion", "polarbear", "penguin" ]
+remote_host_cnt = len(remote_hosts)
+
+def get_build_machine(fn):
+    # XXX the fn -> buildmachine mapping must be persisted... for now we just
+    # determine what machine to use from the string hash, since that should
+    # be deterministic:
+    remote_host = remote_hosts[ hash(fn) % remote_host_cnt ]
+    bb.msg.note(1, bb.msg.domain.Build, "#### picking remote host: %s ####" % remote_host)
+    return remote_host
+################################################################################
+
 class TaskFailure(Exception):
     """Exception raised when a task in a runqueue fails"""
     def __init__(self, x): 
@@ -916,10 +936,16 @@ class RunQueue:
         event.fire(bb.event.StampUpdate(self.target_pairs, self.dataCache.stamp, self.cfgdata))
 
         while True:
+            t1 = time.time()
             task = self.sched.next()
             if task is not None:
                 fn = self.taskData.fn_index[self.runq_fnid[task]]
+                bb.msg.note(1, bb.msg.domain.RunQueue, "%s: #### waited %f for task %s ####" % (datetime.datetime.now(), (time.time() - t1), fn) )
 
+                # XXX map fn to a build machine.. this mapping needs to be persisted
+                # so that the build can be re-started:
+                bb.data.setVar('BUILDMACHINE', get_build_machine(fn), self.cooker.configuration.data)
+                
                 taskname = self.runq_task[task]
                 if self.check_stamp_task(task):
                     bb.msg.debug(2, bb.msg.domain.RunQueue, "Stamp current task %s (%s)" % (task, self.get_user_idstring(task)))
@@ -961,6 +987,8 @@ class RunQueue:
                 self.active_builds = self.active_builds + 1
                 if self.active_builds < self.number_tasks:
                     continue
+            else:
+                bb.msg.note(1, bb.msg.domain.RunQueue, "%s: #### waited %f but got no task ####" % (datetime.datetime.now(), (time.time() - t1)) )
             if self.active_builds > 0:
                 result = os.waitpid(-1, 0)
                 self.active_builds = self.active_builds - 1
