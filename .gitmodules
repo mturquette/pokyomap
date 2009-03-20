@@ -1,3 +1,6 @@
 [submodule "meta-texasinstruments"]
 	path = meta-texasinstruments
 	url = git://github.com/mturquette/meta-texasinstruments.git
+[submodule "meta-maemo"]
+	path = meta-maemo
+	url = git://github.com/mturquette/meta-maemo.git
