@@ -5,7 +5,6 @@ build/tmp/
 scripts/poky-git-proxy-socks
 sources/
 meta-darwin
-meta-maemo
 meta-prvt*
 *.swp
 *.orig
