@@ -54,15 +54,21 @@ function kill_control_masters() {
     done
 }
 
+# XXX somehow get this out of bitbake.conf or dbitbake.conf,
+# so this script is launching the build in the same way that
+# bitbake itself launches remote sub-processes..
+CHROOTCMD="dchroot -d -c $DCHROOT_NAME"
+#CHROOTCMD="sh -c"
+
 ######################################################
 # launch bitbake in dchroot environment
 trap "kill_control_masters; exit" INT TERM EXIT
 if [ "x" != "x$logfile" ]; then
     echo "build start: `date`" > $logfile
-    dchroot -d -c $DCHROOT_NAME "bitbake $*" | tee -a $logfile 2>&1
+    $CHROOTCMD "bitbake $*" | tee -a $logfile 2>&1
     echo "build end: `date`" >> $logfile
 else
-    dchroot -d -c $DCHROOT_NAME "bitbake $*"
+    $CHROOTCMD "bitbake $*"
 fi
 RET=$?
 
