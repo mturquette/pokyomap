@@ -1,7 +1,8 @@
 *.pyc
 *.pyo
 build/conf/local.conf
-build/tmp/
+build/conf/site.conf
+build/tmp
 scripts/poky-git-proxy-socks
 sources/
 meta-darwin
