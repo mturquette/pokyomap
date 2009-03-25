@@ -1,7 +1,7 @@
 DESCRIPTION = "Python GObject bindings"
 SECTION = "devel/python"
 LICENSE = "LGPL"
-DEPENDS = "python-pygobject-native"
+DEPENDS = "python-pygobject-native glib-2.0"
 PR = "r3"
 
 SRC_URI = "ftp://ftp.gnome.org/pub/GNOME/sources/pygobject/2.12/pygobject-${PV}.tar.bz2 \
